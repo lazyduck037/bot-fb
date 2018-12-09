@@ -13,7 +13,7 @@ const structScript = [
             quest:[
                     {
                         type:'quick',
-                        message : '"Please select your language?\nXin vui lòng chọn ngôn ngữ hiển thị"?',
+                        message : 'Please select your language?\nXin vui lòng chọn ngôn ngữ hiển thị?',
                         payload: [
                             {text: 'Việt Nam', code: 'langvn-1' },
                             {text: 'English', code: 'langeng-1' }

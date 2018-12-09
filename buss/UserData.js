@@ -3,10 +3,14 @@ class UserData {
         this.userId = id;
         this.isVn = true;
         this.salary = 0.0;
-        this.step = '';
+        this.step = -1;
         this.email = '';
         this.reduce = 0.0;
         this.under3mon = false
+        this.payload = ''
+        this.belong = 0.0
+        this.insurancefullSalary = false
+        this.insuranceNumber = 0.0
     }
 }
 

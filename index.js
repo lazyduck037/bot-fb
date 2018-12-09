@@ -66,6 +66,9 @@ app.post('/webhook', function(req, res) {
 
 app.post('/', function(req, res) {
     console.log(req.body);
+
+    
+   
 });
 
 
@@ -83,5 +86,7 @@ function setGreetingText() {
 app.listen(3000, () => {
     console.log("Webhook server is listening, port 3000");
     setGreetingText();
+    const structScript = require('./buss/StructScript')
+    console.log('------:'+structScript[0]);
 
 });

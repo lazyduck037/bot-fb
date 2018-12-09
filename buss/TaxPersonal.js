@@ -2,12 +2,13 @@ VND_1_TRIEU = 1000000
 VND_2_TRIEU = 2000000
 VND_5_TRIEU = 5000000
 VND_9_TRIEU = 9000000
-VND_10_TRTEU = 10000000
+VND_10_TRIEU = 10000000
 VND_18_TRIEU = 18000000
 VND_32_TRIEU = 32000000
 VND_52_TRIEU = 52000000
 VND_80_TRIEU = 80000000
-
+RATE_INSURANCE_VN = 0.105
+BELONG_PERSONAL_VN = 3600000
 function taxUnder3mon(salary) {
     salaryTax = salary 
     result = 0;
@@ -20,6 +21,7 @@ function taxUnder3mon(salary) {
 }
 
 function taxOver3mon(salary,reduce){
+
     salaryTax = salary - reduce - VND_9_TRIEU
     tax = 0
     rate = 0;
@@ -31,22 +33,22 @@ function taxOver3mon(salary,reduce){
     } else if(salaryTax < VND_5_TRIEU){
         rate = 0.05;
         minus = 0;
-    } else if(salaryTax >= VND_5_TRIEU && salaryTax < VND_10_TRTEU){
+    } else if(salaryTax >= VND_5_TRIEU && salaryTax < VND_10_TRIEU){
         rate = 0.1;
         minus = 0.25;
-    } else if(salaryTax >= VND_10_TRIEU && salaryTax < VND_18_TRTEU){
+    } else if(salaryTax >= VND_10_TRIEU && salaryTax < VND_18_TRIEU){
         rate  =  0.15
         minus =  0.75
-    } else if(salaryTax >= VND_18_TRIEU && salaryTax < VND_32_TRTEU){
+    } else if(salaryTax >= VND_18_TRIEU && salaryTax < VND_32_TRIEU){
         rate  =  0.2
         minus =  1.65
-    } else if(salaryTax >= VND_32_TRIEU && salaryTax < VND_52_TRTEU){
+    } else if(salaryTax >= VND_32_TRIEU && salaryTax < VND_52_TRIEU){
         rate  =  0.25
         minus =  3.25
-    } else if(salaryTax >= VND_52_TRIEU && salaryTax < VND_80_TRTEU){
+    } else if(salaryTax >= VND_52_TRIEU && salaryTax < VND_80_TRIEU){
         rate  =  0.3
         minus =  5.85
-    } else if(salaryTax >= VND_80_TRTEU){
+    } else if(salaryTax >= VND_80_TRIEU){
         rate  =  0.35
         minus =  9.85
     }
@@ -61,10 +63,21 @@ function personalTaxIsVn(userData){
     reduce = userData.reduce
     under3mon = userData.under3mon
     peronalTax = 0
+    numberInsurance  =  userData.insuranceNumber
+    numberBelong = userData.belong * BELONG_PERSONAL_VN
+    insuranceSum = 0
+    if(userData.insurancefullSalary){
+        insuranceSum = salary * RATE_INSURANCE_VN
+    }else {
+        insuranceSum = numberInsurance * RATE_INSURANCE_VN
+    }
+
     if(under3mon){
         peronalTax = taxUnder3mon(salary)
     } else {
-        peronalTax = taxOver3mon(salary,reduce)
+        
+        
+        peronalTax = taxOver3mon(salary,reduce+insuranceSum +numberBelong)
     }
 
     return peronalTax.toString()
@@ -82,6 +95,7 @@ function taxCalculate(userData){
     console.log('-----------taxCalculate---------')
     console.log(userData)
     if(userData.isVn){
+        
         result = personalTaxIsVn(userData)
     }else {
         result = personalTaxNotVn(userData)
@@ -90,6 +104,7 @@ function taxCalculate(userData){
     console.log('--------------------------------')
     return result
 }
+
 
 module.exports = {
     taxCalculate

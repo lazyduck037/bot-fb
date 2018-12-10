@@ -2,10 +2,10 @@ const MessageQuickRep = require('../platformFb/message/MessageQuickRep')
 const Message = require('../platformFb/message/Message')
 const UserData = require('../buss/UserData')
 const TaxPersonal = require('./TaxPersonal')
-const structScript = require('./StructScript')
-
+const structScriptVn = require('./StructScript')
+const structScriptEn = require('./StructScritpEn')
 var trackStep = new Map()
-var listQuickRep =['','']
+
 function pushToTrack(senderId,userData){
     // trackStep[senderId] = userData
     trackStep.set(senderId, userData)
@@ -62,8 +62,6 @@ function findIndexReqs(payload,reps) {
     return {index:-1,gotoStep:-1}
 }
 
-
-
 function buildRepFromQuest(questMess,senderID){
     if(questMess.type == 'quick') {
             
@@ -83,12 +81,22 @@ function buildRepFromQuest(questMess,senderID){
 
 }
 
+function getDataByLanguage(isEng){
+    var structScript 
+    if(userData.eng){
+        structScript = structScriptEn
+    } else {
+        structScript = structScriptVn
+    }
+    return structScript
+}
 function resendMess(userData,senderID,notQuick=false){
     // if(notQuick){
     //     userData.payload = nextPayload
     // }
 
-    userData.step = findStep(userData.payload)           
+    userData.step = findStep(userData.payload)     
+    structScript = getDataByLanguage(userData.eng)
     listQuest = structScript[userData.step].quest;
     listReps = structScript[userData.step].rep;
     indexReqs = findIndexReqs(userData.payload,listReps)
@@ -115,6 +123,7 @@ function parseMessageImprove(message) {
 
     if(userData.step==-1){
         userData.step = 0
+        structScript = getDataByLanguage(userData.eng)
         questMess = structScript[userData.step].quest[0];
         pushToTrack(senderId,userData)
         messToUser.messageObj = buildRepFromQuest(questMess,senderId)
@@ -125,7 +134,13 @@ function parseMessageImprove(message) {
             userData.payload = payload
             if(payload == 'peoplebelong-9'){
                 userData.belong =  parseInt(message.message.text)
+            }else if(payload=='langvn-1'){
+                userData.eng = false
+            }else if(payload=='langeng-1'){
+                userData.eng = true
             }
+
+
             if(payload =='haveinsurance-11') {
                 userData.insurancefullSalary =  true
                 userData.payload = 'calculatetax'

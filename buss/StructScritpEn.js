@@ -34,8 +34,8 @@ const structScript = [
                         type:'quick',
                         message : 'Bạn đã sinh sống ở Việt Nam hơn 183 ngày?',
                         payload: [ 
-                            {text: 'Có', code: 'live183-2' },
-                            {text: 'Không', code: 'notlive183-2' }
+                            {text: 'Yes', code: 'live183-2' },
+                            {text: 'No', code: 'notlive183-2' }
                         ]
                     },
                     {
@@ -195,8 +195,8 @@ const structScript = [
                 type:'quick',
                 message : 'Are you covered by an official salary?',
                 payload: [
-                    {text: 'Có', code: 'haveinsurance-11' },
-                    {text: 'Không', code: 'nofullinsurance-10' },
+                    {text: 'Yes', code: 'haveinsurance-11' },
+                    {text: 'No', code: 'nofullinsurance-10' },
                     
                 ]
             }

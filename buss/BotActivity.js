@@ -132,7 +132,7 @@ function parseMessageImprove(message) {
         if(message.message.quick_reply){
             var payload = message.message.quick_reply.payload
             userData.payload = payload
-            if(payload == 'peoplebelong-9'){
+             if(payload == 'peoplebelong-9'){
                 userData.belong =  parseInt(message.message.text)
             }else if(payload=='langvn-1'){
                 userData.eng = false
@@ -153,8 +153,10 @@ function parseMessageImprove(message) {
 
 
         }else {
-
-            if(userData.payload == 'notthan183day-6') {
+            if(userData.payload == 'notthan2milion-4'){
+                    userData.payload = 'calculatetax'
+                    messToUser.messageObj = resendMess(senderId,userData)
+            }else if(userData.payload == 'notthan183day-6') {
                 textRev = message.message.text
                 if(isNumeric(textRev)){
                     userData.salary = parseFloat(textRev.trim())

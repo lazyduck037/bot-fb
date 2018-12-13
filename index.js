@@ -41,19 +41,12 @@ function createGreetingApi(data) {
 
 app.post('/webhook', function(req, res) {
     var entries = req.body.entry;
-    console.log(req.body)       
     for (var entry of entries) {
         var messaging = entry.messaging;
         for (var message of messaging) {
             if (message.message) {
-                console.log('----------------message-----------------')
-                console.log( message)
-                console.log('---------------------------------')
                 var bot = new BotActivity();
                 var messRep =  bot.parseMessage(message)
-                console.log('----------------messRep-----------------')
-                console.log( messRep)
-                console.log('---------------------------------')
                 var sender = new Sender(messRep)
                 sender.sendMessage();
 
@@ -86,7 +79,4 @@ function setGreetingText() {
 app.listen(3000, () => {
     console.log("Webhook server is listening, port 3000");
     setGreetingText();
-    const structScript = require('./buss/StructScript')
-    console.log('------:'+structScript[0]);
-
 });

@@ -2,7 +2,7 @@ const MessageQuickRep = require('../platformFb/message/MessageQuickRep')
 const Message = require('../platformFb/message/Message')
 const UserData = require('../buss/UserData')
 const TaxPersonal = require('./TaxPersonal')
-const structScriptVn = require('./StructScript')
+const structScript = require('./StructScript')
 const structScriptEn = require('./StructScritpEn')
 var trackStep = new Map()
 
@@ -13,10 +13,6 @@ function pushToTrack(senderId,userData){
 
 function getFromTrack(senderId){
     userData = trackStep.get(senderId)
-    console.log('-----------getFromTrack->->userData--')
-    console.log(userData)
-    console.log('senderId:'+senderId)
-    console.log('-----------getFromTrack--------------')
     if(userData){
         return userData;
     }
@@ -42,45 +38,6 @@ function isNumeric(n) {
 }
 
 
-function findStep(payload){
-    stringStep = payload.split('-')[1]
-    step = parseInt(stringStep)
-    return step
-}
-
-function findIndexReqs(payload,reps) {
-    size = reps.length
-    for(i =0;i<size;i++ ) {
-        if(payload == reps[i].payload) {
-            if(reps[i].index != -1) {
-                return {index:reps[i].index,gotoStep:-1} 
-            } else {
-                return {index:-1,gotoStep:reps[i].gotoStep} 
-            }
-        }
-    }
-    return {index:-1,gotoStep:-1}
-}
-
-function buildRepFromQuest(questMess,senderID){
-    if(questMess.type == 'quick') {
-            
-        var messquick = new MessageQuickRep(questMess.message)
-        size = questMess.payload.length;
-        for(i = 0 ; i< size ; i++) {
-            messquick.addSugest('text',questMess.payload[i].text,questMess.payload[i].code ,'')
-        }
-        return messquick.builder()
-    } 
-
-    if(questMess.type == 'text') {
-            
-        var message = new Message(questMess.message);
-        return message.builder()
-    } 
-
-}
-
 function getDataByLanguage(isEng){
     var structScript 
     if(userData.eng){
@@ -90,166 +47,140 @@ function getDataByLanguage(isEng){
     }
     return structScript
 }
-function resendMess(userData,senderID,notQuick=false){
-    // if(notQuick){
-    //     userData.payload = nextPayload
-    // }
-
-    userData.step = findStep(userData.payload)     
-    structScript = getDataByLanguage(userData.eng)
-    listQuest = structScript[userData.step].quest;
-    listReps = structScript[userData.step].rep;
-    indexReqs = findIndexReqs(userData.payload,listReps)
-    console.log('--listQuest------------')
-    console.log(listQuest)
-    console.log(listReps)
-    console.log(indexReqs)
-    console.log(userData)
-    console.log('--listQuest------------')
-    if(indexReqs.index != -1) {
-        questMess = listQuest[indexReqs.index]
-        pushToTrack(senderID,userData)
-
-        return buildRepFromQuest(questMess, senderID)
-    }
+function sendMess(questMess,builtTextMess){
+    type = questMess.type
+    message = questMess.message
+    payloads = questMess.payload
     
+    var objMess
+    if(type == 'quick') {
+        var messquick = new MessageQuickRep(message)
+        size = payloads.length;
+        for(i = 0 ; i< size ; i++) {
+            messquick.addSugest('text',payloads[i].text,payloads[i].code +'@#$'+ payloads[i].next.toString() ,'')
+        }
+        objMess =  messquick.builder()
+        builtTextMess(-2)
+
+    }else if(type == 'text') {
+        var messquick = new Message(message)
+        next = questMess.next
+        objMess =  messquick.builder()
+        builtTextMess(next)
+    }
+   
+    return objMess
 }
-function parseMessageImprove(message) {
-        
+function parseMessageImprove(message,processNext) {
+
+    console.log('--------------message------------')
+    console.log(message)
+    console.log('--------------------------')
     var messToUser = {};
+
     var senderId=  message.sender.id;
     messToUser.senderID = senderId
+    var input={};
     userData = getFromTrack(messToUser.senderID)
 
-    if(userData.step==-1){
-        userData.step = 0
-        structScript = getDataByLanguage(userData.eng)
-        questMess = structScript[userData.step].quest[0];
-        pushToTrack(senderId,userData)
-        messToUser.messageObj = buildRepFromQuest(questMess,senderId)
-        
+
+    console.log('--------------userData get------------')
+    console.log(userData)
+    console.log('--------------------------')
+    isResendFailStyle = false
+
+    
+    if(message.message.quick_reply){
+        //get next
+        var payload = message.message.quick_reply.payload
+        input.payload = payload
+        userData.step = parseInt(payload.split('@#$')[1])
+        console.log('------------payload-------------:' +payload +'--------userData.step-------:' + userData.step)
     }else {
-        if(message.message.quick_reply){
-            var payload = message.message.quick_reply.payload
-            userData.payload = payload
-             if(payload == 'peoplebelong-9'){
-                userData.belong =  parseInt(message.message.text)
-            }else if(payload=='langvn-1'){
-                userData.eng = false
-            }else if(payload=='langeng-1'){
-                userData.eng = true
-            }
-
-
-            if(payload =='haveinsurance-11') {
-                userData.insurancefullSalary =  true
-                userData.payload = 'calculatetax'
-                pushToTrack(senderId,userData)
-                messToUser.messageObj = resultTax(userData)
-
-            }else {
-                messToUser.messageObj = resendMess(userData,senderId) 
-            }
-
-
-        }else {
-            if(userData.payload == 'notthan2milion-4'){
-                    userData.payload = 'calculatetax'
-                    messToUser.messageObj = resendMess(senderId,userData)
-            }else if(userData.payload == 'notthan183day-6') {
-                textRev = message.message.text
-                if(isNumeric(textRev)){
-                    userData.salary = parseFloat(textRev.trim())
-                    userData.isVn = false
-                    userData.under3mon = false
-                    userData.reduce = 0
-                    userData.payload = 'calculatetax'
-                    pushToTrack(senderId,userData)
-                    messToUser.messageObj = resultTax(userData);
-                    
-                }else {
-                    //resend
-                    messToUser.messageObj = resendMess(userData,senderId)
-                }
-            }else if(userData.payload == 'than2milion-4'){
-                textRev = message.message.text
-                if(isNumeric(textRev)){
-                    userData.salary = parseFloat(textRev.trim())
-                    userData.isVn = true
-                    userData.under3mon = true
-                    userData.reduce = 0
-                    userData.payload = 'calculatetax'
-                    pushToTrack(senderId,userData)
-                    messToUser.messageObj = resultTax(userData);
-                }else {
-                    
-                    messToUser.messageObj = resendMess(userData,senderId)
-                }
-            } else if(userData.payload == 'contract3month-3'){
-                textRev = message.message.text
-                if(isNumeric(textRev)){
-                    userData.salary = parseFloat(textRev.trim())
-                    userData.under3mon = false
-                    userData.isVn = true
-                    
-                    //send mess 
-                    userData.payload = 'peoplebelongto-7';
-                    pushToTrack(senderId,userData)
-                    messToUser.messageObj = resendMess(userData,senderId) 
-
-                }else {
-                    messToUser.messageObj = resendMess(userData,senderId)
-                }
-
-            } else if(userData.payload=='peoplebelongthan2-8'){
-                textRev = message.message.text
-                if(isNumeric(textRev)){
-                    userData.belong = parseFloat(textRev.trim())
-                    userData.payload = 'peoplebelong-9';
-                    pushToTrack(senderId,userData)
-                    messToUser.messageObj = resendMess(userData,senderId) 
-                
-                }else {
-                    messToUser.messageObj = resendMess(userData,senderId)
-                }
-            }else if(userData.payload=='nofullinsurance-10'){
-                textRev = message.message.text
-                if(isNumeric(textRev)){
-                    userData.insuranceNumber = parseFloat(textRev.trim())
-                    userData.payload = 'calculatetax'
-                    pushToTrack(messToUser.senderID,userData)
-                    messToUser.messageObj = resultTax(userData)
-
-                }else {
-                    messToUser.messageObj = resendMess(userData,senderId)
-                }
-            }else if(userData.payload=='calculatetax'){
-                userData.payload = 'thankforuse-11'
-                messToUser.messageObj = resendMess(userData,senderId)
-                console.log('-------------- messToUser.messageObj------------------------')
-                console.log(messToUser)
-                console.log('--------------------------------------')
-                removeTrack(senderId)
-            } else if(userData.payload=='thankforuse-11'){
-                removeTrack(senderId)
-
-            }else{
-                    //fail recall
-                    if(userData.payload == '') {
-                        userData.payload = 'start-0';
-                    }
-                    messToUser.messageObj = resendMess(userData,messToUser.senderID) 
-            }
+        input.text = message.message.text
+        if(structScript[userData.step].quest.type == 'quick'){
+            //resend message
+            isResendFailStyle = true
         }
     }
 
+    
+    numberQuest = userData.step
+    questMess = structScript[numberQuest].quest
+    handle = questMess.preRep.handle
+    requireValue = questMess.preRep.require
+    
+    messToUser.messageObj = sendMess(questMess,function(indexNext){
+        if(indexNext || indexNext==0){
+            //get next
+            isNextReq = processNext(handle,input,requireValue,userData)
+            console.log("isNextReq:"+isNextReq)
+            console.log("isResendFailStyle:"+isResendFailStyle)
+            console.log("indexNext:"+indexNext)
+            if( isNextReq) {
+                if(!isResendFailStyle){
+                    if(indexNext != -2 ){
+                        userData.step = indexNext
+                    }
+                }
+            }
+        }
+        console.log('--------------userData push------------')
+        console.log(userData)
+        console.log('--------------------------')
+        pushToTrack(senderId,userData)
+    });
+
+    
+   
     return messToUser;
 }
 
-class BotActivity {
+function processNextImp(handle,input,requireValue,userData){
+    if(requireValue == 'ignore'){
+        return true
+    }
 
+    payloadIn = input.payload
+    textIn = input.text
+    size = handle.length
+    isNextReq = true
+    for(i = 0; i < size ; i++){
+        field = handle[i].field
+        value = handle[i].value
+        code = handle[i].code
+        require = handle[i].require
+       
+        if(payloadIn){
+            codeData = payloadIn.split('@#$')[0]
+            if(codeData == code) {
+                userData[field] = value
+                break;
+            }
+        }else {
+            if(requireValue=='number'){
+                if(!isNumeric(textIn)){
+                    isNextReq = false
+                    break
+                }else {
+                    userData[field] = parseInt(textIn)
+                    break
+                }
+            }
+            
+            userData[field] = parseInt(textIn)
+            break
+
+        }
+    }
+    return isNextReq
+}
+
+class BotActivity {
+    
     parseMessage(message) {
-        return parseMessageImprove(message)
+       
+        return parseMessageImprove(message,processNextImp)
     }
 }
 module.exports = BotActivity

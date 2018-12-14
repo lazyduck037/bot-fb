@@ -2,8 +2,9 @@ const MessageQuickRep = require('../platformFb/message/MessageQuickRep')
 const Message = require('../platformFb/message/Message')
 const UserData = require('../buss/UserData')
 const TaxPersonal = require('./TaxPersonal')
-const structScript = require('./StructScript')
+const structScriptVn = require('./StructScriptVn')
 const structScriptEn = require('./StructScritpEn')
+var structScript = structScriptVn
 var trackStep = new Map()
 
 function pushToTrack(senderId,userData){
@@ -38,14 +39,14 @@ function isNumeric(n) {
 }
 
 
-function getDataByLanguage(isEng){
-    var structScript 
-    if(userData.eng){
-        structScript = structScriptEn
+function getDataByLanguage(){
+    var structScriptTemp 
+    if(userData.lang == 'eng'){
+        structScriptTemp = structScriptEn
     } else {
-        structScript = structScriptVn
+        structScriptTemp = structScriptVn
     }
-    return structScript
+    return structScriptTemp
 }
 function sendMess(questMess,builtTextMess){
     type = questMess.type
@@ -60,22 +61,23 @@ function sendMess(questMess,builtTextMess){
             messquick.addSugest('text',payloads[i].text,payloads[i].code +'@#$'+ payloads[i].next.toString() ,'')
         }
         objMess =  messquick.builder()
-        builtTextMess(-2)
+        builtTextMess()
 
     }else if(type == 'text') {
+
+        message = message.replace('%tax%',userData.sumtax)
+        message = message.replace('%email%',userData.email)
+
         var messquick = new Message(message)
         next = questMess.next
         objMess =  messquick.builder()
-        builtTextMess(next)
+        builtTextMess()
     }
    
     return objMess
 }
 function parseMessageImprove(message,processNext) {
 
-    console.log('--------------message------------')
-    console.log(message)
-    console.log('--------------------------')
     var messToUser = {};
 
     var senderId=  message.sender.id;
@@ -84,92 +86,123 @@ function parseMessageImprove(message,processNext) {
     userData = getFromTrack(messToUser.senderID)
 
 
-    console.log('--------------userData get------------')
-    console.log(userData)
-    console.log('--------------------------')
+
     isResendFailStyle = false
 
-    
+    var isNextReq
     if(message.message.quick_reply){
         //get next
         var payload = message.message.quick_reply.payload
         input.payload = payload
+
+
+        handle = structScript[userData.step].quest.preRep.handle
+        requireValue = structScript[userData.step].quest.preRep.require
+        processNext(handle,input,requireValue,userData)
+        structScript = getDataByLanguage(userData.lang)
+
         userData.step = parseInt(payload.split('@#$')[1])
-        console.log('------------payload-------------:' +payload +'--------userData.step-------:' + userData.step)
+        if(structScript[userData.step].quest.type == 'text'){
+            isResendFailStyle = true
+        }
+        isNextReq = true
+
     }else {
         input.text = message.message.text
+        // isNextReq = processNext(handle,input,requireValue,userData)
         if(structScript[userData.step].quest.type == 'quick'){
             //resend message
             isResendFailStyle = true
-        }
-    }
-
-    
-    numberQuest = userData.step
-    questMess = structScript[numberQuest].quest
-    handle = questMess.preRep.handle
-    requireValue = questMess.preRep.require
-    
-    messToUser.messageObj = sendMess(questMess,function(indexNext){
-        if(indexNext || indexNext==0){
-            //get next
+            isNextReq = false
+            
+        }else {
+            handle = structScript[userData.step].quest.preRep.handle
+            requireValue = structScript[userData.step].quest.preRep.require
             isNextReq = processNext(handle,input,requireValue,userData)
-            console.log("isNextReq:"+isNextReq)
-            console.log("isResendFailStyle:"+isResendFailStyle)
-            console.log("indexNext:"+indexNext)
-            if( isNextReq) {
-                if(!isResendFailStyle){
-                    if(indexNext != -2 ){
-                        userData.step = indexNext
-                    }
+            structScript = getDataByLanguage(userData.lang)
+            
+            if(isNextReq){
+                if(message.message.quick_reply){
+        
+                }else {
+                    userData.step = structScript[userData.step].quest.next
                 }
             }
         }
-        console.log('--------------userData push------------')
-        console.log(userData)
-        console.log('--------------------------')
-        pushToTrack(senderId,userData)
+
+    }
+
+    numberQuest = userData.step
+    questMess = structScript[numberQuest].quest
+    handle = structScript[numberQuest].quest.preRep.handle
+    requireValue = structScript[numberQuest].quest.preRep.require
+
+    messToUser.messageObj = sendMess(questMess,function(){
+        // sizeStruct = structScript.length
+        // if(userData.step == sizeStruct-1){
+        //     removeTrack(userData.userId)
+        // }
+
+
     });
 
-    
-   
+ 
+    pushToTrack(senderId,userData)
+
     return messToUser;
 }
 
 function processNextImp(handle,input,requireValue,userData){
-    if(requireValue == 'ignore'){
-        return true
-    }
+
 
     payloadIn = input.payload
     textIn = input.text
     size = handle.length
     isNextReq = true
+    console.log('------handle--------')
+    console.log(handle)
+    console.log('-------handle-------')
     for(i = 0; i < size ; i++){
         field = handle[i].field
         value = handle[i].value
         code = handle[i].code
         require = handle[i].require
        
+        
         if(payloadIn){
+  
             codeData = payloadIn.split('@#$')[0]
             if(codeData == code) {
-                userData[field] = value
-                break;
+
+                if(field=='sumtax'){
+                    tax = TaxPersonal.taxCalculate(userData)
+                    userData[field] = tax
+                }else {
+                    userData[field] = value
+                    if(requireValue == 'ignore'){
+
+                        console.log(userData)
+                        return true
+                    }
+                }
             }
         }else {
-            if(requireValue=='number'){
+            
+            
+            if(field=='sumtax'){
+                tax = TaxPersonal.taxCalculate(userData)
+                userData[field] = tax
+            }else if(requireValue=='number'){
                 if(!isNumeric(textIn)){
                     isNextReq = false
                     break
                 }else {
-                    userData[field] = parseInt(textIn)
-                    break
+                    userData[field] = parseFloat(textIn)
                 }
+            }else if(requireValue=='email'){
+                userData[field] = textIn
             }
-            
-            userData[field] = parseInt(textIn)
-            break
+
 
         }
     }

@@ -11,7 +11,8 @@ class UserData {
         this.belong = 0.0
         this.insurancefullSalary = false
         this.insuranceNumber = 0.0
-        this.lang = ''
+        this.lang = 'vn'
+        this.sumtax = 0.0
     }
 }
 
